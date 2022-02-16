@@ -11,3 +11,7 @@ Q-learning / REINFORCE / Actor-Critic (AC)
 DQN / Double DQN / h-DQN / DDPG
 
 A3C / TRPO / PPO / TD3 / Soft AC
+
+## Comparison
+
+Updating...
