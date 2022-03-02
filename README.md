@@ -4,7 +4,7 @@
 
 Monte Carlo / Temporal Difference (TD) / SARSA 
 
-Q-learning / REINFORCE / Actor-Critic (AC)
+Q-learning / REINFORCE / [Actor-Critic (AC)](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
 
 ## Advanced RL Algorithms
 
