@@ -2,6 +2,8 @@
 """
 @coder: Liangyawei Kuang
 
+OS-Windows 10
+
 Python-3.9.7
 Gym-0.21.0
 PyTorch-1.10.2
