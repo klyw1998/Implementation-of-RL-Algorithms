@@ -12,6 +12,10 @@ Q-learning / [REINFORCE](https://github.com/klyw1998/Implementation-of-RL-Algori
 
 A3C / TRPO / PPO / TD3 / Soft AC
 
+## Multi-Agent RL Algorithms
+
+[MADDPG](https://github.com/klyw1998/MADDPG) / [QMIX](https://github.com/klyw1998/QMIX)
+
 ## Comparison
 
 Updating...
