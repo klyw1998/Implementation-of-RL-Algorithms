@@ -2,13 +2,13 @@
 
 ## Basic RL Algorithms
 
-.[Basic Algorithms in Multi-Armed Bandit](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/multi-armed%20bandit.py) / .[Monte Carlo in MDP](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/markov%20decision%20process.py)  
+[Basic Algorithms in Multi-Armed Bandit](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/multi-armed%20bandit.py) / [Monte Carlo in MDP](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/markov%20decision%20process.py)  
 
-/ .[Policy Iteration and Value Iteration with Dynamic Programming](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/dynamic%20programming.py)  
+/ [Policy Iteration and Value Iteration with Dynamic Programming](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/dynamic%20programming.py)  
 
-/ .[Temporal Difference (TD) - SARSA and Q-learning](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/temporal%20difference.py) / Dyna-Q  
+/ [Temporal Difference (TD) - SARSA and Q-learning](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/temporal%20difference.py) / Dyna-Q  
 
-/ REINFORCE-1 / .[REINFORCE-2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/REINFORCE.py) / Actor-Critic (AC) - 1 /  [AC - 2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
+/ REINFORCE-1 / [REINFORCE-2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/REINFORCE.py) / Actor-Critic (AC) - 1 /  [AC - 2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
 
 
 ## Advanced RL Algorithms
