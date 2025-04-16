@@ -6,9 +6,9 @@
 
 / [Policy Iteration and Value Iteration with Dynamic Programming](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/dynamic%20programming.py)  
 
-/ [Temporal Difference (TD) - SARSA and Q-learning](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/temporal%20difference.py) / Dyna-Q  
+/ [Temporal Difference (TD) - SARSA and Q-learning](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/temporal%20difference.py) / [Dyna-Q]((https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/DynaQ.py))  
 
-/ REINFORCE-1 / [REINFORCE-2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/REINFORCE.py) / Actor-Critic (AC) - 1 /  [AC - 2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
+/ [REINFORCE](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/REINFORCE.py) / [Actor-Critic (AC) - 1](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/ActorCritic.py) /  [AC - 2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
 
 
 ## Advanced RL Algorithms
