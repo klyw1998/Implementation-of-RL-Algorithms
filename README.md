@@ -8,7 +8,7 @@
 
 / [Temporal Difference (TD) - SARSA and Q-learning](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/temporal%20difference.py) / [Dyna-Q](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/DynaQ.py)  
 
-/ [REINFORCE](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/REINFORCE.py) / [Actor-Critic (AC) - 1](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/ActorCritic.py) /  [AC - 2](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
+/ [REINFORCE](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/REINFORCE.py) / [Actor-Critic](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/ActorCritic.py) /  [Actor-Critic (another example)](https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/Basic/Actor_Critic.py)
 
 
 ## Advanced RL Algorithms
