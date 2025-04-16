@@ -1,330 +1,149 @@
-# -*- coding: utf-8 -*-
-"""
-Reinforcement Learning (DQN) Tutorial
-=====================================
-**Author**: `Adam Paszke <https://github.com/apaszke>`_
-
-
-This tutorial shows how to use PyTorch to train a Deep Q Learning (DQN) agent
-on the CartPole-v0 task from the `OpenAI Gym <https://gym.openai.com/>`__.
-
--------------------------------------------------------------------------------
-@coder: Liangyawei Kuang
-
-OS-Windows 10
-
-Python-3.9.7
-Gym-0.21.0
-PyTorch-1.10.2
-"""
-
-import gym
-import math
-import random
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from collections import namedtuple, deque
-from itertools import count
-from PIL import Image
-
+import gymnasium as gym
+# import gym
+# from gym.version import VERSION
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-import torchvision.transforms as T
-
-env = gym.make('CartPole-v0').unwrapped
-
-# Matplotlib settings
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
-    
-    
-plt.ion()
+import random
+import collections
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import rl_utils
 
 
-# If gpu is used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Check torch version and gym version
+print(torch.__version__)
+# print(VERSION)
+
+# Check whether GPU is available
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+print(device)
 
 
-###############################################################################
-# Replay memory
-#
+class ReplayBuffer:
+    "Experience Replay Buffer"
+    def __init__(self, buffer_size):
+        self.buffer = collections.deque(maxlen=buffer_size) # queue, FIFO
 
-Transition = namedtuple('Transition', ('state', 'action', 'next_state', 
-                                       'reward'))
+    def add(self, state, action, reward, next_state, done): # add data into buffer
+        self.buffer.append((state, action, reward, next_state, done))
+
+    def sample(self, batch_size): # sample data from the buffer, the amount is batch_size
+        transitions = random.sample(self.buffer, batch_size)
+        state, action, reward, next_state, done = zip(*transitions)
+        return np.array(state), action, reward, np.array(next_state), done
+
+    def size(self):
+        return len(self.buffer)
 
 
-class ReplayMemory(object):
-    
-    def __init__(self, capacity):
-        self.memory = deque([], maxlen = capacity)
-        
-    def push(self, *args):
-        """Save a transition"""
-        self.memory.append(Transition(*args))
-        
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-    
-    def __len__(self):
-        return len(self.memory)
-    
-    
-###############################################################################
-# DQN algorithm
-# -------------
-#
-# In this algorithm, we use Huber Loss to minimise the TD error.
-#
+class Qnet(torch.nn.Module):
+    "Q-Network wirh only one hidden layer"
+    def __init__(self, state_dim, hidden_dim, action_dim):
+        super(Qnet, self).__init__()
+        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
+        self.fc2 = torch.nn.Linear(hidden_dim, action_dim)
 
-class DQN(nn.Module):
-    
-    def __init__(self, h, w, outputs):
-        super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(3, 16, kernel_size = 5, stride = 2)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size = 5, stride = 2)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 32, kernel_size = 5, stride = 2)
-        self.bn3 = nn.BatchNorm2d(32)
-        
-        # Num of linear input connections depends in output of conved layer and
-        # the input image size.
-        def conv2d_size_out(size, kernel_size = 5, stride = 2):
-            return (size - (kernel_size - 1) - 1) // stride + 1
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
-        linear_input_size = convw * convh * 32
-        self.head = nn.Linear(linear_input_size, outputs)
-        
-    # Called with either one element to determine next action, or a batch 
-    # during optimization. Returns tensors([[left0exp,right0exp]...]).
     def forward(self, x):
-        x = x.to(device)
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        return self.head(x.view(x.size(0), -1))
-  
-    
-###############################################################################
-# Input exteaction
-#
+        x = F.relu(self.fc1(x)) # Use the ReLU activation function in the hidden layer
+        return self.fc2(x)
 
-resize = T.Compose([T.ToPILImage(), T.Resize(40, interpolation = Image.CUBIC),
-                    T.ToTensor()])
+class DQN:
+    "DQN algorithm"
+    def __init__(self, state_dim, hidden_dim, action_dim, lr, gamma, epsilon, target_update, device):
+        self.action_dim = action_dim
+        self.q_net = Qnet(state_dim, hidden_dim, self.action_dim).to(device) # Q network
+        self.target_q_net = Qnet(state_dim, hidden_dim, self.action_dim).to(device) # target network
+        self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr) # use adam optimizer
+        self.gamma = gamma # discount factor
+        self.epsilon = epsilon # epsilon-greedy policy
+        self.target_update = target_update # target network update frequence
+        self.count = 0
+        self.device = device
 
+    def take_action(self, state): # take action following epsilon-greedy
+        if np.random.random() < self.epsilon:
+            action = np.random.randint(self.action_dim)
+        else:
+            state_current = torch.tensor(state, dtype=torch.float).to(self.device)
+            action = self.q_net(state_current).argmax().item()
+        return action
 
-def get_cart_location(screen_width):
-    world_width = env.x_threshold * 2
-    scale = screen_width / world_width
-    return int(env.state[0] * scale + screen_width / 2.0) # Middle of cart
-
-def get_screen():
-    # Returned screen requested by gym is 400X600X3, but it is larger sometimes
-    # (800X1200X3). So transpose it into torch order (CHW).
-    screen = env.render(mode = 'rgb_array').transpose((2, 0, 1))
-    # Strip off the top and bottom of the screen as the cart is in the lower 
-    # half.
-    _, screen_height, screen_width = screen.shape
-    screen = screen[:, int(screen_height * 0.4):int(screen_height * 0.8)]
-    view_width = int(screen_width * 0.6)
-    cart_location = get_cart_location(screen_width)
-    if cart_location < view_width // 2:
-        slice_range = slice(view_width)
-    elif cart_location > (screen_width - view_width // 2):
-        slice_range = slice(-view_width, None)
-    else:
-        slice_range = slice(cart_location - view_width // 2, 
-                            cart_location + view_width // 2)
-    # Strip off the edged so that we could have a centered square image on a 
-    # cart.
-    screen = screen[:, :, slice_range]
-    screen = np.ascontiguousarray(screen, dtype = np.float32) / 255
-    screen = torch.from_numpy(screen)
-    # Resize and add a batch dimension (BCHW)
-    return resize(screen).unsqueeze(0)
+    def update(self, transition_dict):
+        states = torch.tensor(transition_dict['states']).float().to(self.device)
+        actions = torch.tensor(transition_dict['actions']).view(-1, 1).to(self.device)
+        rewards = torch.tensor(transition_dict['rewards']).view(-1, 1).to(self.device)
+        next_states = torch.tensor(transition_dict['next_states']).to(self.device)
+        dones = torch.tensor(transition_dict['dones']).float().view(-1, 1).to(self.device)
+        q_values = self.q_net(states).gather(1, actions) # Q_value
+        # biggest q_value in next state
+        max_next_q_values = self.target_q_net(next_states).max(1)[0].view(-1, 1)
+        q_targets = rewards + self.gamma * max_next_q_values * (1 - dones) # TD loss target
+        dqn_loss = torch.mean(F.mse_loss(q_values, q_targets)) # mean squared error loss function
+        self.optimizer.zero_grad() # the default gradient will be accumulated in PyTorch so we need to set it to zero
+        dqn_loss.backward() # update parameters backwards
+        self.optimizer.step()
+        if self.count % self.target_update == 0:
+            self.target_q_net.load_state_dict(self.q_net.state_dict()) # update target net
+        self.count +=1
 
 
-env.reset()
-plt.figure()
-plt.imshow(get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(),
-           interpolation = 'none')
-plt.title('Example extracted screen')
+lr = 2e-3
+num_episodes = 500
+hidden_dim = 128
+gamma = 0.98
+epsilon = 0.01
+target_update = 10
+buffer_size = 10000
+minimal_size = 500
+batch_size = 64
+
+env_name = 'CartPole-v1'
+env = gym.make(env_name)
+random.seed(0)
+np.random.seed(0)
+env.reset(seed=0)
+torch.manual_seed(0)
+replay_buffer = ReplayBuffer(buffer_size)
+state_dim = env.observation_space.shape[0]
+action_dim = env.action_space.n
+agent = DQN(state_dim, hidden_dim, action_dim, lr, gamma, epsilon, target_update, device)
+
+return_list = []
+for i in range(10):
+    with tqdm(total=int(num_episodes / 10), desc='Iteration %d' % i) as pbar:
+        for i_episode in range(int(num_episodes / 10)):
+            episode_return = 0
+            state, info = env.reset()
+            episode_over = False
+            while not episode_over:
+                action = agent.take_action(state)
+                next_state, reward, done, truncated, info = env.step(action)
+                replay_buffer.add(state, action, reward, next_state, done)
+                episode_over = done or truncated
+                episode_return += reward
+                state = next_state
+                # when buffer size is larger than minimal size, do the Q net training
+                if replay_buffer.size() > minimal_size:
+                    b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size)
+                    transition_dict = {'states': b_s, 'actions': b_a, 'next_states': b_ns, 'rewards': b_r, 'dones': b_d}
+                    agent.update(transition_dict)
+            return_list.append(episode_return)
+            if (i_episode + 1) % 10 == 0:
+                pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
+                                  'return': '%.3f' % np.mean(return_list[-10:])})
+            pbar.update(1)
+
+episodes_list = list(range(len(return_list)))
+plt.plot(episodes_list, return_list)
+plt.xlabel('Episodes')
+plt.ylabel('Returns')
+plt.title('DQN on {}'.format(env_name))
 plt.show()
 
-
-###############################################################################
-# Training
-#
-
-BATCH_SIZE = 128
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
-TARGET_UPDATE = 10
-
-# We need to get the screen size to initialize layers correctly based on shape
-# returned from AI gym. Typical dimensions at this point are close to 3X40X90
-# which is the result of a clamped and downscaled render buffer in get_screen()
-# .
-init_screen = get_screen()
-_, _, screen_height, screen_width = init_screen.shape
-
-# Get number of actions from gym action space
-n_actions = env.action_space.n
-
-policy_net = DQN(screen_height, screen_width, n_actions).to(device)
-target_net = DQN(screen_height, screen_width, n_actions).to(device)
-target_net.load_state_dict(policy_net.state_dict())
-target_net.eval()
-
-optimizer = optim.RMSprop(policy_net.parameters())
-memory = ReplayMemory(10000)
-
-
-steps_done = 0
-
-
-def select_action(state):
-    global steps_done
-    sample = random.random()
-    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
-    steps_done += 1
-    if sample > eps_threshold:
-        with torch.no_grad():
-            # t.max(1) will return largest column value of each row. second 
-            # column on max result is index of where max element was found, so 
-            # we pick action with the larger expected reward.
-            return policy_net(state).max(1)[1].view(1, 1)
-    else:
-        return torch.tensor([[random.randrange(n_actions)]], device=device,
-                            dtype=torch.long)
-    
-    
-episode_durations = []
-
-
-def plot_durations():
-    plt.figure(2)
-    plt.clf()
-    durations_t = torch.tensor(episode_durations, dtype=torch.float)
-    plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode average and plot them too.
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
-        
-    plt.pause(0.001) # pause a bit s.t. plots are updated.
-    if is_ipython:
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-
-
-###############################################################################
-# Training loop
-#
-
-def optimize_model():
-    if len(memory) < BATCH_SIZE:
-        return
-    transitions = memory.sample(BATCH_SIZE)
-    # Transpose the batch (https://stackoverflow.com/a/19343/15482642). This
-    # converts batch-array of Transitions to Transition of batch-arrays.
-    batch = Transition(*zip(*transitions))
-    
-    # Compute a mask of non-final states and concatenate the batch elements (a
-    # final state would have been the one after which simulation ended)
-#------------------------------------------------------------------------------
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, 
-                                  dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
-    state_batch = torch.cat(batch.state)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
-    
-    # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-    # columns of actions taken. These are the actions which would've been taken
-    # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).gather(1, action_batch)
-
-    # Compute V(s_{t+1}) for all next states.
-    # Expected values of actions for non_final_next_states are computed based
-    # on the "older" target_net; selecting their best reward with max(1)[0].
-    # This is merged based on the mask, such that we'll have either the 
-    # expected state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values[non_final_mask] = target_net(non_final_next_states). \
-        max(1)[0].detach()
-    # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
-
-    # Compute Huber loss
-    criterion = nn.SmoothL1Loss()
-    loss = criterion(state_action_values, expected_state_action_values. \
-                     unsqueeze(1))
-
-    # Optimize the model
-    optimizer.zero_grad()
-    loss.backward()
-    for param in policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)
-    optimizer.step()
-    
-    
-###############################################################################
-#
-
-num_episodes = 50
-for i_episode in range(num_episodes):
-    # Initialize the environment and state
-    env.reset()
-    last_screen = get_screen()
-    current_screen = get_screen()
-    state = current_screen - last_screen
-    for t in count():
-        # Select and perform an action
-        action = select_action(state)
-        _, reward, done, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
-
-        # Observe new state
-        last_screen = current_screen
-        current_screen = get_screen()
-        if not done:
-            next_state = current_screen - last_screen
-        else:
-            next_state = None
-
-        # Store the transition in memory
-        memory.push(state, action, next_state, reward)
-
-        # Move to the next state
-        state = next_state
-
-        # Perform one step of the optimization (on the policy network)
-        optimize_model()
-        if done:
-            episode_durations.append(t + 1)
-            plot_durations()
-            break
-    # Update the target network, copying all weights and biases in DQN
-    if i_episode % TARGET_UPDATE == 0:
-        target_net.load_state_dict(policy_net.state_dict())
-
-print('Complete')
-env.render()
-env.close()
-plt.ioff()
+mv_return = rl_utils.moving_average(return_list, 9)
+plt.plot(episodes_list, mv_return)
+plt.xlabel('Episodes')
+plt.ylabel('Returns')
+plt.title('DQN on {}'.format(env_name))
 plt.show()
