@@ -10,7 +10,7 @@ import pandas as pd
 # pip install 'pip<24.1'
 # pip install 'setuptools<=66'
 # pip install 'wheel<=0.38.4'
-# git clone https://github.com/koulanurag/ma-gym.git
+# git clone https://https://github.com/klyw1998/Implementation-of-RL-Algorithms/blob/main/MARL/ma-gym.git
 # cd ma-gym
 # pip install -e .
 
